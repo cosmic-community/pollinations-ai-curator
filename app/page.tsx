@@ -1,6 +1,5 @@
 import { cosmic } from '@/lib/cosmic';
 import { Settings, ImagePost, Tag } from '@/lib/types';
-import MainView from './MainView'; // We'll create this client component inline or separate
 import { Suspense } from 'react';
 
 // Separate Client Component for state management
@@ -12,37 +11,63 @@ import Gallery from '@/components/Gallery';
 import CosmicBadge from '@/components/CosmicBadge';
 
 async function getData() {
+  // Helper functions to handle Cosmic SDK promises correctly with try/catch
+  // instead of chaining .catch() which TS complains about
+  const getSettings = async () => {
+    try {
+      const data = await cosmic.objects
+        .findOne({ type: 'settings', slug: 'app-settings' })
+        .props('metadata')
+        .depth(1);
+      return data;
+    } catch (error) {
+      // Default settings if fetch fails
+      return { 
+        object: { 
+          metadata: { 
+            feed_url: 'https://image.pollinations.ai/feed',
+            image_shelf: 'Pollinations Curator',
+            images_per_page: 12,
+            feed_update_interval: 30,
+            enable_auto_tagging: true,
+            description: 'Explore beautiful AI-generated images'
+          } 
+        } 
+      };
+    }
+  };
+
+  const getImages = async () => {
+    try {
+      const data = await cosmic.objects
+        .find({ type: 'images' })
+        .props('id,slug,title,metadata')
+        .depth(1)
+        .sort('-created_at')
+        .limit(50);
+      return data;
+    } catch (error) {
+      return { objects: [] };
+    }
+  };
+
+  const getTags = async () => {
+    try {
+      const data = await cosmic.objects
+        .find({ type: 'tags' })
+        .props('id,slug,title,metadata')
+        .depth(1);
+      return data;
+    } catch (error) {
+      return { objects: [] };
+    }
+  };
+
   try {
-    // Fetch settings
-    const settingsPromise = cosmic.objects
-      .findOne({ type: 'settings', slug: 'app-settings' })
-      .props('metadata')
-      .depth(1)
-      .catch(() => ({ object: { metadata: { 
-        feed_url: 'https://image.pollinations.ai/feed',
-        image_shelf: 'Pollinations Curator' 
-      } } }));
-
-    // Fetch images
-    const imagesPromise = cosmic.objects
-      .find({ type: 'images' })
-      .props('id,slug,title,metadata')
-      .depth(1)
-      .sort('-created_at')
-      .limit(50)
-      .catch(() => ({ objects: [] }));
-
-    // Fetch tags
-    const tagsPromise = cosmic.objects
-      .find({ type: 'tags' })
-      .props('id,slug,title,metadata')
-      .depth(1)
-      .catch(() => ({ objects: [] }));
-
     const [settingsRes, imagesRes, tagsRes] = await Promise.all([
-      settingsPromise,
-      imagesPromise,
-      tagsPromise
+      getSettings(),
+      getImages(),
+      getTags()
     ]);
 
     return {
@@ -52,8 +77,16 @@ async function getData() {
     };
   } catch (error) {
     console.error('Error fetching data:', error);
+    // Fallback data
     return {
-      settings: { metadata: { feed_url: 'https://image.pollinations.ai/feed', image_shelf: 'Error Loading' } } as Settings,
+      settings: { 
+        metadata: { 
+          feed_url: 'https://image.pollinations.ai/feed', 
+          image_shelf: 'Error Loading',
+          description: 'Failed to load settings',
+          images_per_page: 12
+        } 
+      } as Settings,
       images: [],
       tags: [],
     };
@@ -74,7 +107,7 @@ function PageClient({ settings, images, tags }: { settings: Settings, images: Im
             <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-lg text-sm text-primary-foreground/80">
               <p>
                 <strong>💡 Tip:</strong> You are viewing a live stream of images being generated right now by users on Pollinations.ai. 
-                Click "Save" on any image to curate it into your personal gallery.
+                Click &quot;Save&quot; on any image to curate it into your personal gallery.
               </p>
             </div>
             <LiveFeed feedUrl={settings.metadata.feed_url} />

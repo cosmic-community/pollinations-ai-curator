@@ -21,7 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
-        <script src="/dashboard-console-capture.js" is:inline></script>
+        {/* Removed is:inline as it is not a valid React attribute */}
+        <script src="/dashboard-console-capture.js"></script>
       </head>
       <body className="antialiased bg-background text-foreground">
         {children}
