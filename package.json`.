@@ -1,0 +1,13 @@
+// ...
+export interface PollinationsImage {
+    imageURL: string;
+    prompt: string;
+    seed: number;
+    width?: number;
+    height?: number;
+    model?: string; // This is in the stream data
+    // Add other fields from example if useful
+    nologo?: boolean;
+    safe?: boolean;
+    enhance?: boolean;
+}
